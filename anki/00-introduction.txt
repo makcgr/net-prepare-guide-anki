@@ -1,0 +1,45 @@
+#separator:tab
+#html:true
+#notetype:Basic
+#deck:DotNet Interview Guide::00 Introduction
+#tags column:3
+Name the typical rounds of a .NET backend interview loop.	Technical screening, live coding, technical deep dive, system design, code review exercise, behavioural. Then a debrief and decision. Ask the recruiter for the exact list.	ch00 interview-structure
+What does a technical screening round measure?	Correct fundamentals, clear and simple explanations, basic fit for the level. It is lost more often by confident wrong answers than by &quot;I do not know&quot;.	ch00 interview-structure screening
+What does a live coding round measure most?	The process: clarifying, writing examples, readable code, walking through and testing it while talking. The cleverest algorithm matters less.	ch00 interview-structure live-coding
+What is the goal of a technical deep dive?	To find the limit of your knowledge by going deeper on one topic (often from your CV): mechanisms, edge cases, production experience. Reaching the limit is expected.	ch00 interview-structure deep-dive
+Give an example path of a deep dive on <code>await</code>.	<code>await</code> → state machine → <code>SynchronizationContext</code> → continuations on the thread pool → thread-pool starvation from sync over async.	ch00 interview-structure deep-dive async
+What does a system design round look for?	How you collect requirements, split the system, choose storage, handle failure and explain tradeoffs. There is no single correct final diagram.	ch00 interview-structure system-design
+What is the key signal in a code review exercise?	Prioritization: finding the security hole and the data-loss bug before naming and style issues, with severity and a fix for each.	ch00 interview-structure code-review
+What does a behavioural round measure, and which answer format fits?	Ownership, collaboration, conflict, learning and influence, from your past actions. Use STAR: Situation, Task, Action, Result.	ch00 interview-structure behavioural star
+Which rounds usually decide Senior vs Staff?	System design, technical deep dive and behavioural. Preparing only for coding is a common mistake for these levels.	ch00 interview-structure levels
+Which chapters prepare for the system design round?	06 (architecture), 07 (events and outbox), 08 (background tasks), 09 (MongoDB and migrations), 13 (security), and the walkthrough in 14.	ch00 interview-structure system-design
+Which question about each round helps you show the right signal?	&quot;What signal does this interviewer need to write down?&quot; Then make it easy to see: say tradeoffs out loud, say &quot;I&quot; in stories.	ch00 interview-structure
+What are levels mostly about: years or scope?	Scope and independence. The same question can show Mid, Senior or Staff depending on the answer.	ch00 levels
+Senior vs Staff: what is the difference in scope?	Senior owns a component or service end to end. Staff owns a system or an area across several teams.	ch00 levels
+Senior vs Staff: how do they handle ambiguity?	Senior turns a vague task into a plan. Staff finds the problems that nobody has written down yet.	ch00 levels
+Senior vs Staff: how do they handle known technical traps?	Senior explains the mechanisms and edge cases. Staff sets team rules and tooling so the traps do not happen again.	ch00 levels
+Duplicate tasks from a Kafka handler: what does the Staff answer add to the Senior one?	Senior: make the handler idempotent and test a double delivery. Staff adds: check other handlers, move idempotency into the base class, add a review rule and a metric for duplicates.	ch00 levels idempotency
+What is the common mistake when trying to sound Staff-level?	Talking about large systems you did not own. Probing exposes missing detail. Show scope through the effects of your own work.	ch00 levels
+Which three examples should you prepare for Staff-level stories?	Cases where your work changed something beyond your own task: a rule, a tool, a process, or another team's design.	ch00 levels behavioural
+What are the parts of every chapter in this book?	Why it matters; what you will be able to do; main sections (concept, why, example, mistake, tip); At Smartcat; Interview corner (interviewee and interviewer); exercises; summary; Anki deck footer.	ch00 book
+Why does the book separate general .NET from &quot;At Smartcat&quot; content?	At another company a Smartcat convention is an example of good judgment, not a universal rule. Say &quot;in my team we did X because Y&quot;.	ch00 book smartcat
+A convention differs between two Smartcat repositories. Which rule do you follow?	Follow the repo you are in. Example: private methods are <code>camelCase</code> in the monolith but PascalCase in smartcat-ai-agents.	ch00 book smartcat
+As an interviewer, where do you start reading this book?	Chapter 14 (plan, question bank, rubric, bias, feedback), then the &quot;As the interviewer&quot; section of each chapter for the round you run.	ch00 book interviewer
+Why does spaced repetition help for interviews more than re-reading?	Re-reading gives recognition; interviews need recall. Cards make you produce the answer from memory, just before you would forget it.	ch00 spaced-repetition
+What are the two rules that make spaced repetition work?	Answer before you look (press Again if you only recognize the answer), and study a little every day instead of a lot once a week.	ch00 spaced-repetition
+How do you import a deck file of this book into Anki?	Anki desktop 2.1.55+: File → Import → choose the <code>.txt</code> file. The headers fill the mapping (tab separator, HTML, Basic note type, deck, tags column 3). Click Import.	ch00 anki-import
+What does <code>::</code> in <code>#deck:DotNet Interview Guide::01 CSharp and Runtime</code> do?	It creates a sub-deck. All chapter decks appear under one parent deck &quot;DotNet Interview Guide&quot;.	ch00 anki-import
+How do you import a new version of a deck without losing review history?	Import the file again with Existing notes set to Update. Anki matches notes by the first field (Front) and note type. A card whose front changed becomes a new card.	ch00 anki-import
+Which note type should you use when importing these decks, and why?	Basic, as the header says. Not &quot;Basic (and reversed card)&quot;: code-on-the-front and list-on-the-back cards do not work in reverse.	ch00 anki-import
+Which Anki settings are recommended for these decks?	FSRS on (Anki 23.10+), desired retention about 0.9, new cards per day from your plan (20-40), maximum reviews high enough not to hide reviews.	ch00 spaced-repetition anki-settings
+Which tags does every card in this book have?	<code>chNN</code> (chapter) and a topic tag. Plus <code>smartcat</code> for company conventions and <code>interviewer</code> for cards that train the interviewer side.	ch00 tags
+How do you study only system-design chapters the day before that round?	Tools → Create Filtered Deck with a search like <code>deck:&quot;DotNet Interview Guide&quot; (tag:ch06 OR tag:ch07 OR tag:ch08)</code>.	ch00 tags anki-settings
+You interview at another company. How do you adjust the decks?	In Browse, search <code>tag:smartcat</code>, select all, and Toggle Suspend. The general .NET cards stay active.	ch00 tags
+What does the 4-week plan cover each week?	Week 1: 00-03. Week 2: 04-06. Week 3: 07-09. Week 4: 10-14, STAR stories, a full mock loop, and a rest day. One review day with a mock at the end of each week.	ch00 study-plan
+Why stop adding new cards a few days before the interview?	So the last days are reviews only: every card has been seen and reinforced at least once, and the review pile stays small.	ch00 study-plan spaced-repetition
+How do you reduce the load of the 2-week plan?	Suspend <code>smartcat</code> cards for another company, suspend most <code>interviewer</code> cards, and skim chapters in your strong areas (exercises only).	ch00 study-plan tags
+What is the most common mistake in the last week before an interview?	Reading more chapters instead of practising. Mock interviews and speaking answers out loud give more value per hour.	ch00 study-plan
+What makes a mock interview useful?	A real timer and tools, questions the candidate did not choose, an interviewer who does not help more than a real one, and 10 minutes of rubric-based feedback at the end. Swap roles next time.	ch00 mock-interview
+What is the common mistake in a take-home task?	Building far more than asked. It costs time and shows weak judgment of scope. Build the simple version well and list production additions in the README.	ch00 take-home
+Interviewer: how do you use the round structure when designing a loop?	Decide which round measures which rubric dimension, so rounds do not repeat the same questions and every dimension gets evidence from at least one round.	ch00 interviewer interview-structure
+Interviewer: give three probes for &quot;walk me through your system&quot;.	Which part did you build yourself? What broke in production, and how did you find out? If load grew ten times, what would fail first?	ch00 interviewer probes

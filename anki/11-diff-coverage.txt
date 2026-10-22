@@ -1,0 +1,55 @@
+#separator:tab
+#html:true
+#notetype:Basic
+#deck:DotNet Interview Guide::11 Diff coverage
+#tags column:3
+Define line coverage.	The share of executable lines that ran at least once during the tests.	ch11 coverage line-coverage
+Define branch coverage.	The share of decision outcomes (each side of an <code>if</code>, each <code>case</code>, each <code>&amp;&amp;</code> short-circuit) that ran at least once.	ch11 coverage branch-coverage
+Define diff coverage.	Line (or branch) coverage measured only on the lines changed by the MR.	ch11 coverage diff-coverage
+Give an example where line coverage is 100% but branch coverage is not.	<code>if (c.IsVip &amp;&amp; total &gt; 1000) return total * 0.1m;</code> on one line: tests can run every line while the <code>total &lt;= 1000</code> outcome for a VIP is never taken.	ch11 coverage branch-coverage
+Does a green (covered) line mean the logic is tested?	No. Green means executed. It says nothing about whether any assert checked the result.	ch11 coverage quality
+Why is a high total-coverage gate a bad fit for a large legacy codebase?	Either the threshold is low and blocks nothing, or it is high and blocks every MR on code its author never touched.	ch11 diff-coverage gate
+What fair question does diff coverage ask?	&quot;Did you test the code you wrote or changed?&quot; New code must be tested; legacy does not block.	ch11 diff-coverage gate
+Why is diff coverage called a ratchet?	Each MR adds tested code, so the tested share grows over time in the code that changes most, where bugs usually appear.	ch11 diff-coverage gate
+A refactoring MR moves 300 untested lines and fails the gate. Why, and what do you do?	Moved lines count as changed. Split mechanical moves from behaviour changes, or add characterization tests first.	ch11 diff-coverage legacy
+List the steps to compute a diff coverage number.	1) merge-base of source and target; 2) added/modified lines from the diff; 3) intersect with executable lines in the coverage report; 4) covered / total; 5) compare with threshold.	ch11 diff-coverage
+Why compare with the merge-base and not the tip of develop?	Other people&#39;s new commits on develop would enter your diff. The merge-base isolates exactly your changes.	ch11 diff-coverage git
+How do you collect Cobertura coverage with coverlet.collector?	<code>dotnet test --collect:&quot;XPlat Code Coverage&quot;</code> &rarr; <code>TestResults/&lt;guid&gt;/coverage.cobertura.xml</code>.	ch11 coverlet cobertura
+How do you collect Cobertura coverage with the MTP code coverage extension?	<code>dotnet test ... --coverage --coverage-output-format cobertura --coverage-output out.xml</code>.	ch11 cobertura mtp
+In Cobertura XML, what does <code>&lt;line number=&quot;42&quot; hits=&quot;3&quot; branch=&quot;true&quot; condition-coverage=&quot;50% (1/2)&quot;/&gt;</code> mean?	Line 42 ran 3 times, but only one of its two branch outcomes was taken.	ch11 cobertura
+What does GitLab&#39;s <code>artifacts:reports:coverage_report</code> (cobertura) give you, and what not?	Coverage marks in the MR diff gutter. It is not a gate; a separate job compares a number with a threshold.	ch11 gitlab cobertura
+What is the Smartcat monolith diff coverage gate and its threshold?	Blocking job <code>Backend/Code Coverage [Diff Line Rate Check]</code> (stage TestCoverageAnalysis); needs <code>LineRate &gt;= 0.8</code> on changed lines vs the merge-base with <code>origin/develop</code>.	ch11 smartcat gate
+Name the fields of the Smartcat Diff Coverage JSON report.	<code>CoveredLines</code>, <code>TotalLines</code>, <code>LineRate</code>, and <code>UncoveredFiles[]</code> each with <code>FileName</code>, <code>CoveredLines</code>, <code>TotalLines</code>, <code>LineRate</code>, <code>UncoveredLines</code>.	ch11 smartcat report
+Report: 8 of 16 changed lines covered. How many more must you cover?	At least 5: the gate needs 0.8 &times; 16 = 12.8, so 13 covered lines.	ch11 smartcat report
+There is no Diff Coverage comment on the MR. Why?	The pipeline has not run yet or the coverage job is still pending. Wait for CI or run coverage locally.	ch11 smartcat troubleshooting
+What are the workflow steps to fix a failing diff coverage report?	Get MR changes &rarr; find and read the report &rarr; read each uncovered file at the listed lines and check existing tests &rarr; separate logic from trivial lines &rarr; write tests &rarr; run them &rarr; push and re-check.	ch11 smartcat workflow
+In which order do you prioritize uncovered lines?	1) Business logic (conditions, calculations, state transitions); 2) error handling (catch, validation, guards); 3) integration points (API calls, handlers, repositories).	ch11 workflow prioritization
+Which uncovered lines do you deprioritize?	DTOs/POCOs with auto-properties, one-line pass-through methods, generated code and configuration models.	ch11 workflow prioritization
+Why prioritize logic lines when the gate counts all lines equally?	Bugs are not equal. One state-transition test covers several lines AND protects behaviour; a DTO constructor test protects nothing.	ch11 workflow prioritization
+Under the NUnit MTP runner, which filter command is CORRECT?	<code>dotnet test &lt;Tests.csproj or .sln&gt; -- --filter &quot;MyTestClass&quot;</code>. The filter after <code>--</code> reaches the NUnit runner.	ch11 running-tests mtp
+What happens with <code>dotnet test Tests.csproj --filter &quot;MyTestClass&quot;</code> when <code>EnableNUnitRunner=true</code>?	The filter may be consumed by dotnet/VSTest and silently ignored, so all tests run.	ch11 running-tests mtp
+How do you confirm a filtered run really used your filter?	Check the executed test count. A full-suite count means the filter was ignored.	ch11 running-tests
+Tests pass, but the diff coverage number did not move. Likely causes?	The tests do not reach the exact uncovered lines (another branch, an early return, the <code>throw</code> part of an expression), or the filter/test project ran other tests.	ch11 troubleshooting
+When is <code>[ExcludeFromCodeCoverage]</code> acceptable?	For generated code and pure data holders. Not to hide logic; explain it in the MR.	ch11 troubleshooting exclusions
+Diff coverage job fails: <code>LibGit2SharpException: object not found</code> in <code>FindMergeBase</code>. Cause?	CI&#39;s shallow clone lacks a commit the merge-base walk needs. Environmental, not your code or coverage.	ch11 ci flaky smartcat
+First action for the FindMergeBase &quot;object not found&quot; flake?	Retry the failed job; a retry can land on a runner whose clone has the needed history.	ch11 ci flaky smartcat
+The FindMergeBase retry fails with the SAME missing ID. Next step?	Stop retrying that job and start a fresh MR pipeline. If it persists, ask DevOps for a deeper fetch or a human waiver of that gate.	ch11 ci flaky smartcat
+Why not keep rebasing on develop to fix the FindMergeBase flake?	It also fails at zero divergence, and develop moves while the long pipeline runs, so you lose the race.	ch11 ci flaky smartcat
+The coverage gate is red. What do you check before writing tests?	The job log: uncovered lines, a tool crash (e.g. merge-base flake), or an earlier failed test job. Only the first needs tests.	ch11 ci
+What is wrong with this test?<pre><code>[Test]<br>public void Should_calculate_discount()<br>{<br>    _calc.Discount(vip, 2000);<br>    _calc.Discount(regular, 10);<br>}</code></pre>	No assertions. It gives coverage and verifies nothing; any bug in <code>Discount</code> still passes.	ch11 quality assertion-free
+What is mutation testing?	A tool makes small code changes (mutants: <code>&gt;</code> to <code>&gt;=</code>, <code>&amp;&amp;</code> to <code>||</code>, removed statements) and runs tests. A good suite fails (kills the mutant).	ch11 mutation-testing
+What does a surviving mutant tell you?	Tests run that code but do not verify that behaviour; often a missing boundary or a weak assert.	ch11 mutation-testing
+Mutation score formula?	killed / (killed + survived + NoCoverage) &times; 100. Timeout, CompileError and Ignored are excluded.	ch11 mutation-testing
+Define the coverage theater flag used by Smartcat QA skills.	line coverage &gt;= 80% AND mutation score &lt; 60%: tests run the code but do not check it.	ch11 mutation-testing smartcat
+Why never run Stryker on the whole repo?	Every mutant reruns tests, so it is very slow. Run per file with <code>--mutate</code> on a stratified sample.	ch11 mutation-testing
+For <code>IsOverdue(d) =&gt; now &gt; d</code>, which mutant survives tests at &quot;day before&quot; and &quot;day after&quot;, and how to kill it?	<code>&gt;</code> &rarr; <code>&gt;=</code>. Add a test with now exactly equal to the deadline (FakeTimeProvider) and assert <code>false</code>.	ch11 mutation-testing boundary
+What does risk-weighted coverage (critical path analysis) look at instead of a percentage?	Impact tiers (e.g. Fatal, Corrupt) and whether key code paths/branches of those components are tested: RED none, YELLOW some, GREEN all public methods and key branches.	ch11 smartcat risk
+Why is hard-to-cover code a design signal?	Lines that only run on real time, real network or real files have no seam. Inject time, HTTP clients and I/O so tests can drive every path.	ch11 design seams
+How do you make a <code>catch (HttpRequestException)</code> block coverable?	Inject the API client interface and configure the fake: <code>A.CallTo(() =&gt; api.Send(...)).Throws(new HttpRequestException())</code>.	ch11 design seams fakeiteasy
+State Goodhart&#39;s law.	When a measure becomes a target, it stops being a good measure: people optimize the number, not the goal.	ch11 metrics goodhart
+How does Goodhart&#39;s law show up with coverage targets?	Assertion-free tests, DTO constructor tests, abuse of <code>[ExcludeFromCodeCoverage]</code>: the number rises, safety does not.	ch11 metrics goodhart
+What should you pair coverage with?	A quality signal: mutation score on samples, review rules (regression test fails without the fix), escaped-defect trends.	ch11 metrics
+Why 80% and not 100% for a diff coverage gate?	It leaves room for trivial and generated lines. 100% pushes people to silly tests or exclusions.	ch11 metrics gate
+Interviewer: a good opening question about coverage?	Show a method with one test that gives 100% coverage and a weak assert, and ask &quot;Is this method tested?&quot;	ch11 interviewer
+Interviewer: what tells a Staff answer from a Senior one on coverage?	Senior knows line vs branch, mutation testing and Goodhart. Staff moves the talk from a percentage to risk and change safety, and shapes the gate and code so the metric measures the right thing.	ch11 interviewer
+Interviewer: three red flags in a coverage discussion?	&quot;95% coverage, so well tested&quot;; excluding code or deleting tests to pass a gate; repeatedly rebasing to fix a CI tool crash.	ch11 interviewer

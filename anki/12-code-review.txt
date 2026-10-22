@@ -1,0 +1,83 @@
+#separator:tab
+#html:true
+#notetype:Basic
+#deck:DotNet Interview Guide::12 Code review
+#tags column:3
+In what order should you review a diff?	Intent (ticket, description) -&gt; correctness -&gt; design -&gt; tests -&gt; style.<br>Style first fills attention with nits and hides the data-loss bug.	ch12 review-order
+Why read the full file and callers, not only the diff?	The diff does not show the caller that now gets null, or the second interface implementation that was not updated.	ch12 review-order
+Why also read the removed (red) lines carefully?	A removed <code>if</code>, filter or <code>await</code> is often the bug.	ch12 review-order
+Define the four severity levels.	BLOCKER: breaks prod, loses/leaks data, breaks contract.<br>MAJOR: real bug or design risk in realistic conditions.<br>MINOR: maintenance cost.<br>NIT: taste, optional.	ch12 severity
+How does the Smartcat review bot report map to BLOCKER/MAJOR/MINOR/NIT?	Critical (must fix) ~ BLOCKER+MAJOR, Warning ~ MINOR, Suggestion ~ NIT. Any Critical = NEEDS CHANGES.	ch12 severity smartcat
+Three calibration questions for a finding?	What is the failure scenario (one sentence)? How likely? How bad and how reversible?	ch12 severity
+A finding has no failure scenario you can state. What level is it probably?	A NIT (taste). If you cannot say what breaks, it is not a BLOCKER.	ch12 severity
+Why should a reviewer not mark everything as BLOCKER?	Inflation destroys the signal: authors learn to ignore levels and the real blocker gets the same weight as a rename.	ch12 severity
+A test reads private fields by reflection. Default level, and when does it escalate?	MINOR by default; MAJOR when the test project already has <code>InternalsVisibleTo</code> on the assembly (the clean fix is one word).	ch12 severity tests
+Why write the level (MAJOR, NIT) in the comment itself?	The author knows what blocks the merge; &quot;NIT (optional)&quot; saves a review round and stress.	ch12 comments
+Backend checklist: what must every task processing path end with?	<code>Completed.Now()</code> or <code>Completed.After(delay)</code>. Otherwise the task hangs forever (Critical).	ch12 tasks smartcat
+Backend checklist: how should a task handle transient errors and manual intervention?	Transient: <code>Rescheduled(reason)</code> / <code>TaskRetryPolicy</code>. Manual: throw so the task goes to Manual state.	ch12 tasks smartcat
+When must a task set <code>FairnessHash</code>?	When one tenant can overload the queue. Without it, a big customer starves the others.	ch12 tasks smartcat
+What is <code>TierKey</code> for in task processing?	Gradual (canary) rollout: a risky change reaches some tenants first.	ch12 tasks smartcat
+What is wrong here?<pre><code>await _outbox.Set(projectId, events);</code></pre>	<code>Set</code> overwrites events not yet published: lost messages (Critical).<br>Use <code>await _outbox.PushEach(projectId, events);</code>	ch12 events smartcat
+Why must Kafka handlers be idempotent?	Delivery is at least once; redelivery after a rebalance or crash is normal. Use idempotency keys (<code>EventWithIdempotencyKeyBase</code>) or conditional updates.	ch12 events
+Review point for <code>[MqEvent(..., ConsumerSet = &quot;...&quot;)]</code>?	The consumer set must match the handler purpose. A copied name shares offsets with another handler.	ch12 events smartcat
+What belongs in a before-release vs after-release migration?	Before: nullable fields, new indexes, new collections. After: drop deprecated fields and old indexes, cleanup.	ch12 migrations smartcat
+<code>SafeCreateIndex</code> vs <code>EnsureIndexAsync</code>?	<code>SafeCreateIndex</code>: repository warmup, throws if the collection is not empty (new collections). <code>EnsureIndexAsync</code>: migrations, idempotent.	ch12 migrations smartcat
+Why add a new Mongo field as nullable first (two-phase deployment)?	During a rolling deploy and on rollback, old and new code read the same data. A required field breaks reads of old documents.	ch12 migrations
+Why is <code>Single()</code> a Critical finding on some queries?	If duplicates can exist, it throws on the first duplicate in production. Ask whether a unique index guarantees one match.	ch12 checklist
+Why is a missing tenant/account filter Critical twice over?	Cross-tenant data leak, and the query cannot use the tenant-prefixed index (full scan).	ch12 checklist mongodb
+Why must an upsert handle <code>DuplicateKeyException</code>?	Two concurrent upserts with the same key race; one fails with duplicate key. Catch and retry or map it.	ch12 checklist mongodb
+Backend checklist: cache key and cache failure rules?	The key includes every request parameter (else stale or foreign data). Cache operations need try/catch with fallback.	ch12 checklist
+Rule A1 (BLOCKER): what patterns does it flag?	One interface with two lifetimes; singleton with a scoped dependency (captive); <code>IHttpContextAccessor</code> in a singleton used by background workers.	ch12 architecture di
+Why does a captive dependency pass tests but fail in production?	Unit tests run one request. Under load the scoped object is shared across requests or used after disposal.	ch12 architecture di
+Fix for a singleton that needs a scoped service?	Align lifetimes, or inject <code>IServiceScopeFactory</code> and create a scope per operation.	ch12 architecture di
+Rule A2: what question do you ask about registration order?	&quot;What guarantees this order?&quot; Line order in <code>Module.cs</code> is not a guarantee.	ch12 architecture di
+Rule A16: <code>IServiceProvider</code> in a business class. Why MAJOR?	Service locator: hidden dependencies, hard to test, lifetime errors. Allowed in registration code, factories and hosted-service startup.	ch12 architecture di
+Rule A6: where does HTTP client configuration belong?	In the client library as an <code>AddXClient(this IServiceCollection)</code> extension; the consumer only calls it.	ch12 architecture
+Rule A17: a new hand-written <code>FooApiClient</code> for an internal service. Finding?	MAJOR: reuse the generated SDK / published ApiClient; generate it from OpenAPI if missing.	ch12 architecture
+Rule A18: why is <code>IMemoryCache</code> risky in cross-pod flows?	Each pod has its own cache: different results per pod, no invalidation, lost on restart. Use a distributed cache or no cache.	ch12 architecture cross-pod
+Rule A3: why must workflow node identity not be a lambda or anonymous type?	Closure identity differs per pod and per process. Use stable string names/ids.	ch12 architecture cross-pod
+Rule A9: why not snapshot <code>HttpContext</code> state (feature flags, culture) into a background run?	The run executes later, maybe on another pod; values change. Store identity (accountId, workspaceId) and re-resolve.	ch12 architecture cross-pod
+Rule A4: background events keyed only by <code>runId</code>. Problem?	<code>runId</code> is a session id, not a security boundary. Include <code>(accountId, workspaceId)</code>.	ch12 architecture cross-pod
+Rule A11: what must a distributed lock renewer distinguish?	Logical lock lost (stop the run) vs infrastructure glitch (retry with backoff).	ch12 architecture locks
+Rule A7: why distinguish user-cancel from worker-lost?	Compensation differs: user cancel = stop and clean up; worker lost = resume elsewhere. One handler for both does the wrong thing for one of them.	ch12 architecture
+What is wrong here?<pre><code>foreach (var task in tasks)<br>{<br>    var scope = await _scopes.Get(task.ScopeId);<br>    result.Add(Map(task, scope));<br>}</code></pre>	Rule A20 (MAJOR): N+1 reads. Fix: collect ids, one <code>GetByIds</code>, build a dictionary, zip.	ch12 architecture mongodb
+Rule A21: what patterns are unbounded scans?	<code>Find(Filter.Empty)</code> without paging, <code>GetAll()</code> endpoints, in-memory <code>GroupBy</code> over a collection. Paginate or aggregate in Mongo.	ch12 architecture mongodb
+Rule A22: several <code>UpdateOne</code> calls form one intent. Why MAJOR and the fix?	A crash in the middle leaves half-changed data. Fix: <code>UpdateMany</code> with array filters, one-document design, or a transaction.	ch12 architecture mongodb
+Rule A29: what is the 16 MB problem?	MongoDB's hard document limit. An unbounded array per tenant grows toward it and is slow long before. Use per-entry documents.	ch12 architecture mongodb
+What is wrong here (unique index exists)?<pre><code>if (await _repo.ExistsByName(accountId, name))<br>    throw new DuplicateException(name);<br>await _repo.Insert(item);</code></pre>	Rule A28: TOCTOU race; two requests pass the check. Drop the pre-check, catch the duplicate-key error, map it to a domain error.	ch12 architecture mongodb
+Rule A27: unique index on <code>slug</code> alone. Finding?	Uniqueness must be per tenant: <code>UDX_AccountId_Slug</code>. Otherwise one customer blocks names for all others.	ch12 architecture mongodb
+Rule A26: new unique index on a nullable field that will be backfilled. Risk and fix?	Many nulls violate uniqueness during the window. Use a partial filter excluding null until backfill finishes.	ch12 architecture mongodb
+Rule A10 / T4: what does <code>Filter.Eq(x =&gt; x.Version, 0)</code> miss?	Documents where the field is missing. Null, missing and zero are three states; use <code>Or(Eq, Exists(false))</code> or backfill.	ch12 architecture mongodb
+Rule A25: a new index exists only in a migration. Why MAJOR?	Fresh environments get indexes from repository warmup (<code>SafeCreateIndex</code>); they miss it. Declare it in both places.	ch12 architecture mongodb smartcat
+Rule A31: <code>if (x.Status == Active)</code> appears in 3 callers before <code>x.Complete()</code>. Fix?	Move the precondition inside <code>Complete()</code> and throw (or return a typed error). Future callers cannot forget it.	ch12 architecture invariants
+Rules A13/A15: what should a tool or endpoint method contain?	Parameter validation plus one call to a typed application service. I/O and orchestration live in the service.	ch12 architecture
+Rule A34 (BLOCKER): workflow started from a UI confirmation without idempotency key. Why?	Double clicks and retries start two workflows (two emails, double charges). Pass <code>idempotencyKey: confirmation.Id</code>.	ch12 architecture idempotency
+Rule T14: what test must a fix to state-update or queueing logic have?	A replay test: process the same input twice (same message/run/idempotency key); assert one side effect.	ch12 tests idempotency
+Rule T17: a fix adds a retry loop. Which test is required?	N+1 induced failures; assert the loop gives up after N attempts.	ch12 tests
+Rule A30: why must a circuit breaker not count all exceptions?	User-input errors (bad file) would open the breaker for everyone: a self-inflicted DoS. Count only infrastructure failures.	ch12 architecture resilience
+Rule A39: what must the comment on a TTL/lease field say?	Who writes it, who reads it for cleanup, the worst staleness window, and crash behavior.	ch12 architecture
+Rule T1 (BLOCKER): what is flagged?	A new handler/strategy class or a new type branch without a corresponding test.	ch12 tests
+Rule T11: a bug-fix commit has no test. Severity and what test?	MAJOR. A regression test that fails when the fix is reverted.	ch12 tests
+Rule T5: why are call-count-only assertions weak?	They test how, not what; brittle on refactors. Assert the resulting state.	ch12 tests
+Three parts of a good review comment?	Level, what + why (failure scenario), proposed fix. 1–2 lines.	ch12 comments
+Rewrite: &quot;This is not thread safe.&quot;	&quot;MAJOR: two requests can call <code>Add</code> at once and both change <code>_items</code>. Use a local list or <code>ConcurrentDictionary</code>.&quot;	ch12 comments
+Language rules for review comments in a team of non-native English readers?	Short sentences, active voice, no idioms or phrasal verbs, plain words, keep known tech terms, explain others once.	ch12 comments smartcat
+Tone rule: &quot;you wrote an N+1&quot; vs &quot;this loop issues one query per item&quot;?	Talk about the code, not the person. Same content, no defensiveness.	ch12 comments
+The same issue appears 12 times in a file. How many comments?	One, plus &quot;Same in 11 other places in this file.&quot;	ch12 comments
+What should a reviewer NOT comment on?	Formatting the linter handles, commented-out code (ask to delete), unrelated refactoring (open a ticket), unverified examples.	ch12 comments
+Receiving review: the four steps per point?	Re-read the code and callers; reproduce (write the implied test); decide (fix / defer with ticket / disagree with evidence); reply with the result.	ch12 receiving
+Why should you not resolve the reviewer's thread yourself?	The thread author decides if the concern is addressed. Reply; let them resolve.	ch12 receiving smartcat
+Reviewer asks for an <code>Async</code> suffix in PTS. How to answer?	With evidence: PTS public Task methods have no suffix (repo convention). Taste debates go to a team meeting, not the MR.	ch12 receiving smartcat
+What makes an MR easy to review?	One ticket (D25), small, rebased (D28), honest title (D27), no dead code (D2), self-reviewed, CI green, tests that fail without the fix.	ch12 mr-hygiene
+Sections of a good MR description?	Problem, root cause, fix, how it was verified (failing-then-passing test, repro), risk and rollout.	ch12 mr-hygiene
+Smartcat branch naming rule?	<code>dynamic-&lt;TICKET&gt;-&lt;description&gt;</code>, max 39 chars, no slashes. The prefix triggers CI and a dynamic environment.	ch12 mr-hygiene smartcat
+Smartcat one-line finding format?	<code>[MAJOR] path/File.cs:42 — what. Rule A20.</code>	ch12 smartcat
+What are past-incidents files in review?	Repo-specific rule extensions with real bug history; a matching finding cites the MR/ticket.	ch12 smartcat
+Candidate: first thing to do in a code review exercise?	Ask for context: what the code does, load, hot path, tenants, pods, retries.	ch12 interview
+Candidate: how to finish a review exercise?	Summarize: &quot;Two blockers, one major, three nits. I would request changes.&quot; Mention what is good.	ch12 interview
+Interviewer: how should a review-exercise snippet be built?	40–80 realistic lines; one race/data-loss issue, one design issue, one missing test, 2–3 style issues, and one false alarm.	ch12 interviewer
+Interviewer: what is a good false alarm to plant?	<code>Single()</code> on a query keyed by a unique index. A strong candidate asks before flagging.	ch12 interviewer
+Interviewer: what follow-up separates Staff from Senior in a review exercise?	&quot;This runs on 6 pods and deploys rolling. What changes?&quot; Staff adds deploy/rollback, verification and now-vs-follow-up split.	ch12 interviewer
+Interviewer: red flags in a review exercise?	Starts with formatting, misses tenancy/concurrency, labels all as critical, hostile tone, cannot change mind on evidence.	ch12 interviewer
+Exercise: handler does <code>scope.CompletedCount++</code> then <code>Save</code>. Two issues?	Not idempotent (redelivery double counts) and lost-update race between concurrent handlers. Use atomic <code>$inc</code>/<code>$addToSet</code> with a condition or OCC.	ch12 exercise events
+Exercise: migration indexes <code>&quot;AccountId&quot;</code> and makes the new field <code>required</code> in the same release. Two blockers?	PascalCase field names vs camelCase storage: unused index. Required field before backfill breaks reads during rolling deploy/rollback.	ch12 exercise migrations
